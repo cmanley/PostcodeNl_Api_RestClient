@@ -96,6 +96,8 @@ class PostcodeNl_Api_RestClient
 	protected $_debugData = null;
 	/** @var array|null Last response */
 	protected $_lastResponseData;
+	/** string encoding of application as defined by mb_internal_encoding() */
+	protected $_internal_encoding;
 
 
 	/**
@@ -124,6 +126,9 @@ class PostcodeNl_Api_RestClient
 		$sslSupported = ($version['features'] & CURL_VERSION_SSL);
 		if (!$sslSupported)
 			throw new PostcodeNl_Api_RestClient_ClientException('Cannot use Postcode.nl API client, the server cannot connect to HTTPS urls. (`cURL` extension needs support for SSL)');
+		
+		# This ought to be overridable using constructor options associative array (including options such as 'debug', 'rest_api_url', 'internal_encoding', etc.)
+		$this->_internal_encoding = function_exists('mb_convert_encoding') ? mb_internal_encoding() : null;
 	}
 
 
@@ -217,6 +222,11 @@ class PostcodeNl_Api_RestClient
 
 		// Parse the response as JSON, will be null if not parsable JSON.
 		$jsonResponse = json_decode($response, true);
+		
+		# Transcode $decoded_response if internal encoding is known and not UTF-8
+		if ($this->_internal_encoding && strcasecmp($this->_internal_encoding, 'UTF-8')) {
+			$jsonResponse = static::_transcode('UTF-8', $this->_internal_encoding, $jsonResponse, true);
+		}
 
 		$this->_lastResponseData = $jsonResponse;
 
@@ -398,5 +408,75 @@ class PostcodeNl_Api_RestClient
 	public function getLastResponseData()
 	{
 		return $this->_lastResponseData;
+	}
+	
+	
+	/**
+	* Similar to mb_convert_encoding(), but works on (nested) arrays and objects as well.
+	* This should be in a Helper class, but since this class has no namespace, someone else can do the complete redesign (and base it on Guzzle).
+	*
+	* @param string $encoding_in
+	* @param string $encoding_out
+	* @param mixed $data
+	* @param boolean $keys_too transcode keys too?
+	* @return mixed
+	*/
+	protected static function _transcode($encoding_in, $encoding_out, $data, $keys_too=false) {
+		if (empty($data)) {
+			return $data;
+		}
+		$result = null;
+		if (is_string($data)) {
+			$result = mb_convert_encoding($data, $encoding_out, $encoding_in);
+		}
+		elseif (is_array($data)) {
+			$result = array();
+			foreach($data as $k => $v) {
+				if ($keys_too) {
+					$k = mb_convert_encoding($k, $encoding_out, $encoding_in);
+					if ($k === false) {
+						return false;
+					}
+				}
+				if (is_scalar($v) && !is_string($v)) {
+					$result[$k] = $v; # because $v can be false and that's not an error.
+				}
+				else {
+					$func = __FUNCTION__;
+					$v = static::$func($encoding_in, $encoding_out, $v, $keys_too);
+					if ($v === false) {
+						return false;
+					}
+					$result[$k] = $v;
+				}
+			}
+		}
+		elseif (is_object($data)) {
+			$vars = get_object_vars($data); # public variables.
+			$result = $keys_too && (get_class($data) == 'stdClass') ? new stdClass() : $data;
+			foreach($vars as $k => $v) {
+				if ($keys_too) {
+					$k = mb_convert_encoding($k, $encoding_out, $encoding_in);
+					if ($k === false) {
+						return false;
+					}
+				}
+				if (is_scalar($v) && !is_string($v)) {
+					$result->$k = $v; # because $v can be false and that's not an error.
+				}
+				else {
+					$func = __FUNCTION__;
+					$v = static::$func($encoding_in, $encoding_out, $v, $keys_too);
+					if ($v === false) {
+						return false;
+					}
+					$result->$k = $v;
+				}
+			}
+		}
+		else {
+			$result = $data;
+		}
+		return $result;
 	}
 }
