@@ -94,8 +94,10 @@ class PostcodeNl_Api_RestClient
 	protected $_debugEnabled = false;
 	/** @var array|null Debug data storage. */
 	protected $_debugData = null;
-	/** @var array|null Last response */
+	/** @var array|null Last decoded response */
 	protected $_lastResponseData;
+	/** @var array|null Last raw response content */
+	protected $_lastResponseContent;
 	/** string encoding of application as defined by mb_internal_encoding() */
 	protected $_internal_encoding;
 
@@ -126,7 +128,7 @@ class PostcodeNl_Api_RestClient
 		$sslSupported = ($version['features'] & CURL_VERSION_SSL);
 		if (!$sslSupported)
 			throw new PostcodeNl_Api_RestClient_ClientException('Cannot use Postcode.nl API client, the server cannot connect to HTTPS urls. (`cURL` extension needs support for SSL)');
-		
+
 		# This ought to be overridable using constructor options associative array (including options such as 'debug', 'rest_api_url', 'internal_encoding', etc.)
 		$this->_internal_encoding = function_exists('mb_convert_encoding') ? mb_internal_encoding() : null;
 	}
@@ -220,20 +222,24 @@ class PostcodeNl_Api_RestClient
 			throw new PostcodeNl_Api_RestClient_ClientException('Connection error `'. $curlErrorNr .'`: `'. $curlError .'`', $curlErrorNr);
 		}
 
+		$this->_lastResponseContent = $response;
+
+		// TODO: Should check Content-Type response header here.
+
 		// Parse the response as JSON, will be null if not parsable JSON.
-		$jsonResponse = json_decode($response, true);
-		
-		# Transcode $decoded_response if internal encoding is known and not UTF-8
+		$decoded_response = json_decode($response, true);
+
+		// Transcode $decoded_response if internal encoding is known and not UTF-8
 		if ($this->_internal_encoding && strcasecmp($this->_internal_encoding, 'UTF-8')) {
-			$jsonResponse = static::_transcode('UTF-8', $this->_internal_encoding, $jsonResponse, true);
+			$decoded_response = static::_transcode('UTF-8', $this->_internal_encoding, $decoded_response, true);
 		}
 
-		$this->_lastResponseData = $jsonResponse;
+		$this->_lastResponseData = $decoded_response;
 
 		return [
 			'statusCode' => $responseStatusCode,
 			'statusCodeClass' => $responseStatusCodeClass,
-			'data' => $jsonResponse,
+			'data' => $decoded_response,
 		];
 	}
 
@@ -401,6 +407,16 @@ class PostcodeNl_Api_RestClient
 	}
 
 	/**
+	 * Return the undecoded content of the last response.
+	 *
+	 * @return array|null
+	 */
+	public function getLastResponseContent()
+	{
+		return $this->_lastResponseContent;
+	}
+
+	/**
 	 * Return the last decoded JSON response received, can be used to get more information from exceptions, or debugging.
 	 *
 	 * @return array|null
@@ -409,8 +425,7 @@ class PostcodeNl_Api_RestClient
 	{
 		return $this->_lastResponseData;
 	}
-	
-	
+
 	/**
 	* Similar to mb_convert_encoding(), but works on (nested) arrays and objects as well.
 	* This should be in a Helper class, but since this class has no namespace, someone else can do the complete redesign (and base it on Guzzle).
