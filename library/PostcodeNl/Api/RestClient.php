@@ -173,6 +173,10 @@ class PostcodeNl_Api_RestClient
 	 */
 	protected function _doRestCall($url, array $data = [])
 	{
+		// Create lastResponse to make sure exceptions don't leave data behind from previous calls.
+		$this->_lastResponseContent = null;
+		$this->_lastResponseData = null;
+
 		// Connect using cURL
 		$ch = curl_init();
 		// Set the HTTP request type
@@ -236,7 +240,7 @@ class PostcodeNl_Api_RestClient
 
 		// Transcode $decoded_response if internal encoding is known and not UTF-8
 		if ($this->_internal_encoding && strcasecmp($this->_internal_encoding, 'UTF-8')) {
-			$decoded_response = static::_transcode('UTF-8', $this->_internal_encoding, $decoded_response, true);
+			$decoded_response = static::transcode('UTF-8', $this->_internal_encoding, $decoded_response, true);
 		}
 
 		$this->_lastResponseData = $decoded_response;
@@ -480,7 +484,7 @@ class PostcodeNl_Api_RestClient
 
 	/**
 	* Similar to mb_convert_encoding(), but works on (nested) arrays and objects as well.
-	* This should be in a Helper class, but since this class has no namespace, someone else can do the complete redesign (and base it on Guzzle).
+	* This should be a public method in a Helper class, but since this class has no namespace, someone else can do the complete redesign (and base it on Guzzle).
 	*
 	* @param string $encoding_in
 	* @param string $encoding_out
@@ -488,7 +492,7 @@ class PostcodeNl_Api_RestClient
 	* @param boolean $keys_too transcode keys too?
 	* @return mixed
 	*/
-	protected static function _transcode($encoding_in, $encoding_out, $data, $keys_too=false) {
+	public static function transcode($encoding_in, $encoding_out, $data, $keys_too=false) {
 		if (empty($data)) {
 			return $data;
 		}
