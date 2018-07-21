@@ -129,7 +129,7 @@ class PostcodeNl_Api_RestClient
 		if (!$sslSupported)
 			throw new PostcodeNl_Api_RestClient_ClientException('Cannot use Postcode.nl API client, the server cannot connect to HTTPS urls. (`cURL` extension needs support for SSL)');
 
-		# This ought to be overridable using constructor options associative array (including options such as 'debug', 'rest_api_url', 'internal_encoding', etc.)
+		// This ought to be overridable using constructor options associative array (including options such as 'debug', 'rest_api_url', 'internal_encoding', etc.)
 		$this->_internal_encoding = function_exists('mb_convert_encoding') ? mb_internal_encoding() : null;
 	}
 
@@ -399,19 +399,19 @@ class PostcodeNl_Api_RestClient
 		if (!$postcode) {
 			throw new PostcodeNl_Api_RestClient_InputInvalidException('Postcode argument may not be empty');
 		}
-		# Test postcode format
+		// Test postcode format
 		if (!$this->isValidPostcodeFormat($postcode)) {
 			throw new PostcodeNl_Api_RestClient_InputInvalidException('Postcode `'. $postcode .'` needs to be in the 1234AB format.');
 		}
 
-		# Use the regular validation function
+		// Use the regular validation function
 		$url = $this->_restApiUrl .'/postcode-ranges/postcode/' . rawurlencode($postcode);
 
 		$response = $this->_doRestCall($url);
 
 		$this->_checkResponse($response);
 
-		# Successful response!
+		// Successful response!
 		return $response['data'];
 	}
 
@@ -497,7 +497,7 @@ class PostcodeNl_Api_RestClient
 					}
 				}
 				if (is_scalar($v) && !is_string($v)) {
-					$result[$k] = $v; # because $v can be false and that's not an error.
+					$result[$k] = $v; // because $v can be false and that's not an error.
 				}
 				else {
 					$func = __FUNCTION__;
@@ -510,7 +510,7 @@ class PostcodeNl_Api_RestClient
 			}
 		}
 		elseif (is_object($data)) {
-			$vars = get_object_vars($data); # public variables.
+			$vars = get_object_vars($data); // public variables.
 			$result = $keys_too && (get_class($data) == 'stdClass') ? new stdClass() : $data;
 			foreach($vars as $k => $v) {
 				if ($keys_too) {
@@ -520,7 +520,7 @@ class PostcodeNl_Api_RestClient
 					}
 				}
 				if (is_scalar($v) && !is_string($v)) {
-					$result->$k = $v; # because $v can be false and that's not an error.
+					$result->$k = $v; // because $v can be false and that's not an error.
 				}
 				else {
 					$func = __FUNCTION__;
