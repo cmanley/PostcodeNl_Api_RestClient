@@ -52,6 +52,11 @@ class PostcodeNl_Api_RestClient_InputInvalidException extends PostcodeNl_Api_Res
 class PostcodeNl_Api_RestClient_AddressNotFoundException extends PostcodeNl_Api_RestClient_Exception {}
 
 /**
+ * Exception raised when postcode input contains no formatting errors, but no postcode could be found in ranges() request.
+ */
+class PostcodeNl_Api_RestClient_PostcodeNotFoundException extends PostcodeNl_Api_RestClient_Exception {}
+
+/**
  * Exception raised when an unexpected error occurred in this client.
  */
 class PostcodeNl_Api_RestClient_ClientException extends PostcodeNl_Api_RestClient_Exception {}
@@ -284,8 +289,12 @@ class PostcodeNl_Api_RestClient
 		// Specific exception for the Address API when input is correct, but no address is found
 		if ($response['statusCode'] == 404)
 		{
-			if ($response['data']['exceptionId'] === 'PostcodeNl_Service_PostcodeAddress_AddressNotFoundException')
+			if ($response['data']['exceptionId'] === 'PostcodeNl_Service_PostcodeAddress_AddressNotFoundException') {
 				throw new PostcodeNl_Api_RestClient_AddressNotFoundException($response['data']['exception'], $response['data']['exceptionId']);
+			}
+			elseif ($response['data']['exceptionId'] === 'PostcodeNl_Controller_PostcodeRange_PostcodeNotFoundException') {
+				throw new PostcodeNl_Api_RestClient_PostcodeNotFoundException($response['data']['exception'], $response['data']['exceptionId']);
+			}
 		}
 
 		// Our exception types are based on the HTTP status of the response
