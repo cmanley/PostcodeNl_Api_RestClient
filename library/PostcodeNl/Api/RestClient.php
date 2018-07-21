@@ -374,6 +374,49 @@ class PostcodeNl_Api_RestClient
 
 
 	/**
+	 * Performs a ranges() API call using the given Dutch postcode.
+	 * @see https://api.postcode.nl/documentation/nl/v1/PostcodeRange/viewByPostcode
+	 * Returns an array of associative arrays having these key value pairs:
+	 *	street - (string) Street name in accordance with "BAG (Basisregistraties adressen en gebouwen)". In capital and lowercase letters, including punctuation marks and accents. This field is at most 80 characters in length. Filled with "Postbus" in case it is a range of PO boxes.
+	 *	streetNen - (string) Street name in NEN-5825 notation, which has a lower maximum length. In capital and lowercase letters, including punctuation marks and accents. This field is at most 24 characters in length. Filled with "Postbus" in case it is a range of PO boxes.
+	 *	startHouseNumber - (int) First house number in range. Range: 0-99999
+	 *	endHouseNumber - (int) Last house number in range. Range: 0-99999
+	 *	houseNumberType - (string) "even" or "odd".
+	 *	city - (string) Official city name in accordance with "BAG (Basisregistraties adressen en gebouwen)". In capital and lowercase letters, including punctuation marks and accents. This field is at most 80 characters in length.
+	 *	cityShort - (string) City name, shortened to fit a lower maximum length. In capital and lowercase letters, including punctuation marks and accents. This field is at most 24 characters in length.
+	 *	municipality - (string) Municipality name in accordance with "BAG (Basisregistraties adressen en gebouwen)". In capital and lowercase letters, including punctuation marks and accents. This field is at most 80 characters in length. Examples: "Baarle-Nassau", "'s-Gravenhage", "Haarlemmerliede en Spaarnwoude".
+	 *	municipalityShort - (string) Municipality name, shortened to fit a lower maximum length. In capital and lowercase letters, including punctuation marks and accents. This field is at most 24 characters in length. Examples: "Baarle-Nassau", "'s-Gravenhage", "Haarlemmerliede c.a.".
+	 *	province - (string) Official name of the province, correctly cased and with dashes where applicable.
+	 *
+	 * @param string $postcode Dutch postcode in the '1234AB' format
+	 * @return array
+	 */
+	public function ranges($postcode) {
+		if (!is_string($postcode)) {
+			throw new PostcodeNl_Api_RestClient_InputInvalidException('Postcode argument must be a string');
+		}
+		$postcode = preg_replace('/\s+/', '', $postcode);
+		if (!$postcode) {
+			throw new PostcodeNl_Api_RestClient_InputInvalidException('Postcode argument may not be empty');
+		}
+		# Test postcode format
+		if (!$this->isValidPostcodeFormat($postcode)) {
+			throw new PostcodeNl_Api_RestClient_InputInvalidException('Postcode `'. $postcode .'` needs to be in the 1234AB format.');
+		}
+
+		# Use the regular validation function
+		$url = $this->_restApiUrl .'/postcode-ranges/postcode/' . rawurlencode($postcode);
+
+		$response = $this->_doRestCall($url);
+
+		$this->_checkResponse($response);
+
+		# Successful response!
+		return $response['data'];
+	}
+
+
+	/**
 	 * Validate if string has a correct Dutch postcode format.
 	 * Syntax: 1234AB, or 1234ab - no space in between. First digit cannot be a zero.
 	 *
